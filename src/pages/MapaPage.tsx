@@ -17,10 +17,10 @@ const customIcon = L.icon({
 });
 
 interface MapaPageProps {
-  incidentId: string;
+  incidentId?: string;
 }
 
-export const MapaPage: React.FC<MapaPageProps> = ({ incidentId }) => {
+export const MapaPage: React.FC<MapaPageProps> = ({ incidentId = 'demo-incident' }) => {
   const [locations, setLocations] = useState<LocationRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [updating, setUpdating] = useState<boolean>(false);
