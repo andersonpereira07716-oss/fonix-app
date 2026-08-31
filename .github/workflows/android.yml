@@ -24,24 +24,24 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Instalar dependências da Web
+      - name: Instalar dependências
         run: npm ci || npm install
 
-      - name: Gerar Build da Web (Vite)
+      - name: Build Web
         run: npm run build
 
       - name: Sincronizar Capacitor
         run: npx cap sync android
 
-      - name: Conceder permissão de execução ao Gradle Wrapper
+      - name: Permissão de execução no Gradlew
         run: chmod +x android/gradlew
 
-      - name: Compilar APK Debug com Gradle
+      - name: Compilar APK
         run: |
           cd android
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --stacktrace
 
-      - name: Upload do APK Gerado
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
