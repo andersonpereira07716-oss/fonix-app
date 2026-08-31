@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background-color: #050b18;
+  }
+
+  ::selection {
+    background: rgba(45, 108, 255, 0.35);
+  }
+
+  :focus-visible {
+    outline: 2px solid #22d3ee;
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl2 border border-white/5 bg-void-card/80 shadow-card backdrop-blur-sm;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-electric px-5 py-3 font-display text-sm font-semibold tracking-wide text-white shadow-glow transition active:scale-[0.98] hover:bg-electric-dim disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-alert px-5 py-3 font-display text-sm font-semibold tracking-wide text-white shadow-glow-alert transition active:scale-[0.98] hover:brightness-110;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-5 py-3 font-display text-sm font-semibold tracking-wide text-mist transition hover:border-white/25 hover:text-white;
+  }
+
+  .input-field {
+    @apply w-full rounded-xl border border-white/10 bg-void-soft px-4 py-3 text-sm text-white placeholder:text-mist/60 outline-none transition focus:border-electric;
+  }
+
+  .label-eyebrow {
+    @apply font-mono text-[11px] uppercase tracking-[0.2em] text-mist;
+  }
+}

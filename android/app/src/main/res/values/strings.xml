@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Fônix</string>
+    <string name="title_activity_main">Fônix</string>
+    <string name="package_name">com.fonix.app</string>
+    <string name="custom_url_scheme">com.fonix.app</string>
+</resources>
