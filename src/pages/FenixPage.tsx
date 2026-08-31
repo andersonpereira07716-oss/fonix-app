@@ -1,20 +1,91 @@
-import { useState } from 'react'
-import { ShieldAlert, X } from 'lucide-react'
-
-type LocalStatus = 'NORMAL' | 'INCIDENTE_ATIVO'
+import { useState, useEffect } from 'react'
+import { ShieldAlert, X, Loader2 } from 'lucide-react'
+import {
+  getActiveIncident,
+  createIncident,
+  resolveIncident,
+} from '@/services/incidents'
+import { createEvent } from '@/services/events'
+import type { Incident } from '@/types'
 
 export default function FenixPage() {
-  const [status, setStatus] = useState<LocalStatus>('NORMAL')
+  const [activeIncident, setActiveIncident] = useState<Incident | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
-  function activate() {
-    // FASE 3: criar incidente real (tabela `incidents`) e registrar evento CRÍTICO
-    setStatus('INCIDENTE_ATIVO')
-    setShowConfirm(false)
+  useEffect(() => {
+    async function loadIncident() {
+      try {
+        setLoading(true)
+        const incident = await getActiveIncident()
+        setActiveIncident(incident)
+      } catch (err) {
+        console.error('Erro ao buscar incidente ativo:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadIncident()
+  }, [])
+
+  async function handleActivate() {
+    try {
+      setActionLoading(true)
+      
+      const newIncident = await createIncident({
+        type: 'PERDIDO',
+        status: 'OPEN',
+      })
+
+      if (newIncident) {
+        await createEvent({
+          deviceId: newIncident.deviceId,
+          type: 'CRITICO',
+          description: 'Modo Fênix ativado pelo usuário',
+          locationId: null,
+        })
+      }
+
+      setActiveIncident(newIncident)
+      setShowConfirm(false)
+    } catch (err) {
+      console.error('Erro ao ativar Modo Fênix:', err)
+    } finally {
+      setActionLoading(false)
+    }
   }
 
-  function closeIncident() {
-    setStatus('NORMAL')
+  async function handleCloseIncident() {
+    if (!activeIncident) return
+
+    try {
+      setActionLoading(true)
+
+      await resolveIncident(activeIncident.id)
+
+      await createEvent({
+        deviceId: activeIncident.deviceId,
+        type: 'SISTEMA',
+        description: 'Modo Fênix desativado / Incidente resolvido',
+        locationId: null,
+      })
+
+      setActiveIncident(null)
+    } catch (err) {
+      console.error('Erro ao encerrar incidente:', err)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="animate-spin text-electric" size={28} />
+      </div>
+    )
   }
 
   return (
@@ -24,7 +95,7 @@ export default function FenixPage() {
         Central de recuperação
       </h1>
 
-      {status === 'NORMAL' ? (
+      {!activeIncident ? (
         <div className="card mt-6 flex flex-col items-center gap-4 p-8 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-alert/10">
             <ShieldAlert className="text-alert" size={30} />
@@ -55,8 +126,12 @@ export default function FenixPage() {
             <button className="btn-ghost flex-1">Marcar como roubado</button>
             <button className="btn-ghost flex-1">Marcar como perdido</button>
           </div>
-          <button className="btn-primary" onClick={closeIncident}>
-            Encerrar incidente
+          <button
+            className="btn-primary"
+            onClick={handleCloseIncident}
+            disabled={actionLoading}
+          >
+            {actionLoading ? 'Encerrando...' : 'Encerrar incidente'}
           </button>
         </div>
       )}
@@ -73,11 +148,19 @@ export default function FenixPage() {
               </button>
             </div>
             <div className="mt-6 flex gap-3">
-              <button className="btn-ghost flex-1" onClick={() => setShowConfirm(false)}>
+              <button
+                className="btn-ghost flex-1"
+                onClick={() => setShowConfirm(false)}
+                disabled={actionLoading}
+              >
                 CANCELAR
               </button>
-              <button className="btn-danger flex-1" onClick={activate}>
-                ATIVAR
+              <button
+                className="btn-danger flex-1"
+                onClick={handleActivate}
+                disabled={actionLoading}
+              >
+                {actionLoading ? 'ATIVANDO...' : 'ATIVAR'}
               </button>
             </div>
           </div>

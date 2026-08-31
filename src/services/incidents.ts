@@ -1,53 +1,66 @@
-import { supabase } from '@/lib/supabaseClient'
-import type { Incident, IncidentStatus } from '@/types'
+import { supabase } from '@/lib/supabase'
 import { logEvent } from '@/services/events'
+import type { Incident } from '@/types'
 
-function fromRow(row: any): Incident {
-  return {
-    id: row.id,
-    deviceId: row.device_id,
-    status: row.status,
-    openedAt: row.opened_at,
-    closedAt: row.closed_at,
-    recovered: row.recovered,
-  }
-}
-
-export async function getActiveIncident(deviceId: string): Promise<Incident | null> {
+export const getActiveIncident = async (): Promise<Incident | null> => {
   const { data, error } = await supabase
     .from('incidents')
     .select('*')
-    .eq('device_id', deviceId)
-    .is('closed_at', null)
-    .order('opened_at', { ascending: false })
-    .limit(1)
+    .eq('status', 'OPEN')
     .maybeSingle()
-  if (error) throw error
-  return data ? fromRow(data) : null
+
+  if (error || !data) return null
+
+  return {
+    id: data.id,
+    deviceId: data.device_id,
+    type: data.type,
+    status: data.status,
+    createdAt: data.created_at,
+    resolvedAt: data.resolved_at,
+  }
 }
 
-/** Ativa o Modo Fênix: cria o incidente e registra o evento CRÍTICO correspondente. */
-export async function activatePhoenixMode(deviceId: string): Promise<Incident> {
+export const createIncident = async (incidentData: {
+  type: string
+  status?: string
+}): Promise<Incident | null> => {
   const { data, error } = await supabase
     .from('incidents')
-    .insert({ device_id: deviceId, status: 'PERDIDO' })
+    .insert([
+      {
+        type: incidentData.type,
+        status: incidentData.status || 'OPEN',
+      },
+    ])
     .select()
     .single()
-  if (error) throw error
 
-  await logEvent(deviceId, 'CRITICO', 'Modo Fênix ativado — possível evento de segurança')
-  return fromRow(data)
+  if (error) {
+    console.error('Erro ao criar incidente:', error)
+    return null
+  }
+
+  return {
+    id: data.id,
+    deviceId: data.device_id,
+    type: data.type,
+    status: data.status,
+    createdAt: data.created_at,
+    resolvedAt: data.resolved_at,
+  }
 }
 
-export async function updateIncidentStatus(incidentId: string, status: IncidentStatus) {
-  const { error } = await supabase.from('incidents').update({ status }).eq('id', incidentId)
-  if (error) throw error
-}
-
-export async function closeIncident(incidentId: string, recovered: boolean) {
+export const resolveIncident = async (incidentId: string): Promise<boolean> => {
   const { error } = await supabase
     .from('incidents')
-    .update({ closed_at: new Date().toISOString(), recovered, status: recovered ? 'RECUPERADO' : 'NORMAL' })
+    .update({ status: 'RESOLVED', resolved_at: new Date().toISOString() })
     .eq('id', incidentId)
-  if (error) throw error
+
+  if (error) {
+    console.error('Erro ao resolver incidente:', error)
+    return false
+  }
+
+  return true
 }

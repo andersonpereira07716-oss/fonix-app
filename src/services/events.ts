@@ -1,35 +1,56 @@
-import { supabase } from '@/lib/supabaseClient'
-import type { DeviceEvent, SecurityLevel } from '@/types'
+import { supabase } from '@/lib/supabase'
+import type { DeviceEvent } from '@/types'
 
-function fromRow(row: any): DeviceEvent {
+export const getEvents = async (): Promise<DeviceEvent[]> => {
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .order('occurred_at', { ascending: false })
+
+  if (error) {
+    console.error('Erro ao buscar eventos:', error)
+    return []
+  }
+
+  return (data || []).map((evt: any) => ({
+    id: evt.id,
+    deviceId: evt.device_id,
+    type: evt.type,
+    description: evt.description,
+    occurredAt: evt.occurred_at,
+    locationId: evt.location_id,
+  }))
+}
+
+export const createEvent = async (
+  eventData: Omit<DeviceEvent, 'id' | 'occurredAt'>
+): Promise<DeviceEvent | null> => {
+  const { data, error } = await supabase
+    .from('events')
+    .insert([
+      {
+        device_id: eventData.deviceId,
+        type: eventData.type,
+        description: eventData.description,
+        location_id: eventData.locationId,
+      },
+    ])
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Erro ao criar evento:', error)
+    return null
+  }
+
   return {
-    id: row.id,
-    deviceId: row.device_id,
-    type: row.type,
-    description: row.description,
-    occurredAt: row.occurred_at,
-    locationId: row.location_id,
+    id: data.id,
+    deviceId: data.device_id,
+    type: data.type,
+    description: data.description,
+    occurredAt: data.occurred_at,
+    locationId: data.location_id,
   }
 }
 
-export async function listDeviceEvents(deviceId: string): Promise<DeviceEvent[]> {
-  const { data, error } = await supabase
-    .from('device_events')
-    .select('*')
-    .eq('device_id', deviceId)
-    .order('occurred_at', { ascending: false })
-  if (error) throw error
-  return (data ?? []).map(fromRow)
-}
-
-export async function logEvent(
-  deviceId: string,
-  type: SecurityLevel,
-  description: string,
-  locationId?: string,
-) {
-  const { error } = await supabase
-    .from('device_events')
-    .insert({ device_id: deviceId, type, description, location_id: locationId ?? null })
-  if (error) throw error
-}
+export const logEvent = createEvent
