@@ -1,12 +1,11 @@
-import { supabase } from '@/lib/supabase'
-import { logEvent } from '@/services/events'
-import type { Incident } from '@/types'
+import { supabase } from '@/lib/supabaseClient'
+import type { Incident, IncidentStatus } from '@/types'
 
 export const getActiveIncident = async (): Promise<Incident | null> => {
   const { data, error } = await supabase
     .from('incidents')
     .select('*')
-    .eq('status', 'OPEN')
+    .neq('status', 'NORMAL')
     .maybeSingle()
 
   if (error || !data) return null
@@ -14,23 +13,24 @@ export const getActiveIncident = async (): Promise<Incident | null> => {
   return {
     id: data.id,
     deviceId: data.device_id,
-    type: data.type,
-    status: data.status,
-    createdAt: data.created_at,
-    resolvedAt: data.resolved_at,
+    status: data.status as IncidentStatus,
+    openedAt: data.created_at || data.opened_at,
+    closedAt: data.resolved_at || data.closed_at || null,
+    recovered: data.recovered ?? false,
   }
 }
 
 export const createIncident = async (incidentData: {
-  type: string
-  status?: string
+  status?: string | IncidentStatus
+  deviceId?: string
+  type?: string
 }): Promise<Incident | null> => {
   const { data, error } = await supabase
     .from('incidents')
     .insert([
       {
-        type: incidentData.type,
-        status: incidentData.status || 'OPEN',
+        status: incidentData.status || 'PERDIDO',
+        device_id: incidentData.deviceId,
       },
     ])
     .select()
@@ -44,17 +44,17 @@ export const createIncident = async (incidentData: {
   return {
     id: data.id,
     deviceId: data.device_id,
-    type: data.type,
-    status: data.status,
-    createdAt: data.created_at,
-    resolvedAt: data.resolved_at,
+    status: data.status as IncidentStatus,
+    openedAt: data.created_at || data.opened_at,
+    closedAt: data.resolved_at || data.closed_at || null,
+    recovered: data.recovered ?? false,
   }
 }
 
 export const resolveIncident = async (incidentId: string): Promise<boolean> => {
   const { error } = await supabase
     .from('incidents')
-    .update({ status: 'RESOLVED', resolved_at: new Date().toISOString() })
+    .update({ status: 'RECUPERADO', resolved_at: new Date().toISOString() })
     .eq('id', incidentId)
 
   if (error) {

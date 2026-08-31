@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabaseClient'
 import type { DeviceEvent } from '@/types'
 
 export const getEvents = async (): Promise<DeviceEvent[]> => {
