@@ -1,53 +1,67 @@
 import { supabase } from '@/lib/supabaseClient'
 import type { RecoveryContact } from '@/types'
 
-function fromRow(row: any): RecoveryContact {
-  return {
-    id: row.id,
-    ownerId: row.owner_id,
-    name: row.name,
-    phone: row.phone,
-    message: row.message,
-  }
-}
-
-export async function getMyRecoveryContact(): Promise<RecoveryContact | null> {
+export const getRecoveryContacts = async (): Promise<RecoveryContact[]> => {
   const { data, error } = await supabase
     .from('recovery_contacts')
     .select('*')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  if (error) throw error
-  return data ? fromRow(data) : null
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('Erro ao buscar contatos de emergência:', error)
+    return []
+  }
+
+  return (data || []).map((item: any) => ({
+    id: item.id,
+    ownerId: item.owner_id || '',
+    name: item.name,
+    phone: item.phone,
+    message: item.message || '',
+  }))
 }
 
-export async function upsertRecoveryContact(input: {
-  id?: string
+export const createRecoveryContact = async (contact: {
   name: string
   phone: string
   message?: string
-}): Promise<RecoveryContact> {
-  const { data: userData } = await supabase.auth.getUser()
-  const ownerId = userData.user?.id
-  if (!ownerId) throw new Error('Usuário não autenticado.')
-
-  if (input.id) {
-    const { data, error } = await supabase
-      .from('recovery_contacts')
-      .update({ name: input.name, phone: input.phone, message: input.message })
-      .eq('id', input.id)
-      .select()
-      .single()
-    if (error) throw error
-    return fromRow(data)
-  }
-
+}): Promise<RecoveryContact | null> => {
   const { data, error } = await supabase
     .from('recovery_contacts')
-    .insert({ owner_id: ownerId, ...input })
+    .insert([
+      {
+        name: contact.name,
+        phone: contact.phone,
+        message: contact.message || 'Alerta de emergência ativado pelo FÔNIX.',
+      },
+    ])
     .select()
     .single()
-  if (error) throw error
-  return fromRow(data)
+
+  if (error) {
+    console.error('Erro ao salvar contato de emergência:', error)
+    return null
+  }
+
+  return {
+    id: data.id,
+    ownerId: data.owner_id || '',
+    name: data.name,
+    phone: data.phone,
+    message: data.message || '',
+  }
+}
+
+export const deleteRecoveryContact = async (id: string): Promise<boolean> => {
+  const { error } = await supabase
+    .from('recovery_contacts')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('Erro ao excluir contato:', error)
+    return false
+  }
+
+  return true
 }
