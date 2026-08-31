@@ -131,3 +131,5 @@ export const MapaPage: React.FC<MapaPageProps> = ({ incidentId }) => {
     </div>
   );
 };
+
+export default MapaPage;
