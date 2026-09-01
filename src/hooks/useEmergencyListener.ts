@@ -6,7 +6,20 @@ export function useEmergencyListener() {
   useEffect(() => {
     let channel: any;
 
+    async function requestGpsPermissions() {
+      try {
+        const status = await Geolocation.checkPermissions();
+        if (status.location !== 'granted') {
+          await Geolocation.requestPermissions();
+        }
+      } catch (err) {
+        console.warn('Erro ao solicitar permissões de GPS:', err);
+      }
+    }
+
     async function setupListener() {
+      await requestGpsPermissions();
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
@@ -41,14 +54,14 @@ export function useEmergencyListener() {
     try {
       const position = await Geolocation.getCurrentPosition({
         enableHighAccuracy: true,
-        timeout: 10000
+        timeout: 15000
       });
 
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
       const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
 
-      console.log('Localização capturada com sucesso:', mapUrl);
+      console.log('Localização em segundo plano capturada:', mapUrl);
 
       await supabase.functions.invoke('activate_subscription', {
         body: { customer_email: userEmail }
