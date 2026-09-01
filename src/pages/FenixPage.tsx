@@ -1,12 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { ShieldAlert, X } from 'lucide-react'
 import { useDevice } from '@/hooks/useDevice'
-import {
-  getActiveIncident,
-  activatePhoenixMode,
-  updateIncidentStatus,
-  closeIncident,
-} from '@/services/incidents'
+import { getActiveIncident, createIncident, resolveIncident } from '@/services/incidents'
+import { logEvent } from '@/services/events'
+import { supabase } from '@/lib/supabaseClient'
 import type { Incident, IncidentStatus } from '@/types'
 
 export default function FenixPage() {
@@ -18,17 +15,16 @@ export default function FenixPage() {
   const [error, setError] = useState<string | null>(null)
 
   const loadIncident = useCallback(async () => {
-    if (!device) return
     setLoading(true)
     try {
-      const active = await getActiveIncident(device.id)
+      const active = await getActiveIncident()
       setIncident(active)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível carregar o status.')
     } finally {
       setLoading(false)
     }
-  }, [device])
+  }, [])
 
   useEffect(() => {
     loadIncident()
@@ -39,7 +35,9 @@ export default function FenixPage() {
     setBusy(true)
     setError(null)
     try {
-      const created = await activatePhoenixMode(device.id)
+      const created = await createIncident({ status: 'PERDIDO', deviceId: device.id })
+      if (!created) throw new Error('Não foi possível criar o incidente.')
+      await logEvent(device.id, 'CRITICO', 'Modo Fênix ativado — possível evento de segurança')
       setIncident(created)
       setShowConfirm(false)
     } catch (err) {
@@ -54,7 +52,8 @@ export default function FenixPage() {
     setBusy(true)
     setError(null)
     try {
-      await updateIncidentStatus(incident.id, status)
+      const { error } = await supabase.from('incidents').update({ status }).eq('id', incident.id)
+      if (error) throw error
       setIncident({ ...incident, status })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível atualizar o status.')
@@ -63,12 +62,13 @@ export default function FenixPage() {
     }
   }
 
-  async function handleClose(recovered: boolean) {
+  async function handleClose() {
     if (!incident) return
     setBusy(true)
     setError(null)
     try {
-      await closeIncident(incident.id, recovered)
+      const ok = await resolveIncident(incident.id)
+      if (!ok) throw new Error('Não foi possível encerrar o incidente.')
       setIncident(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível encerrar o incidente.')
@@ -144,7 +144,7 @@ export default function FenixPage() {
               Marcar como perdido
             </button>
           </div>
-          <button className="btn-primary" onClick={() => handleClose(true)} disabled={busy}>
+          <button className="btn-primary" onClick={handleClose} disabled={busy}>
             Encerrar incidente
           </button>
         </div>
