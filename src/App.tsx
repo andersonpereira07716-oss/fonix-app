@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from './lib/supabaseClient';
 import { Paywall } from './components/Paywall';
 import { EmergencyPanel } from './components/EmergencyPanel';
