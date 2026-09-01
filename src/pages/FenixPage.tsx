@@ -37,7 +37,12 @@ export default function FenixPage() {
     try {
       const created = await createIncident({ status: 'PERDIDO', deviceId: device.id })
       if (!created) throw new Error('Não foi possível criar o incidente.')
-      await logEvent(device.id, 'CRITICO', 'Modo Fênix ativado — possível evento de segurança')
+      await logEvent({
+  deviceId: device.id,
+  type: 'CRITICO',
+  description: 'Modo Fênix ativado — possível evento de segurança',
+  locationId: null,
+})
       setIncident(created)
       setShowConfirm(false)
     } catch (err) {
