@@ -12,13 +12,11 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Setup Supabase CLI
+      - name: Deploy webhook-vendas Function
         uses: supabase/setup-cli@v1
         with:
           version: latest
 
-      - name: Deploy Edge Function Webhook Vendas
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      - name: Run Deploy Command
         run: |
-          supabase functions deploy webhook-vendas --project-ref ${{ secrets.SUPABASE_PROJECT_ID }} --no-verify-jwt
+          supabase functions deploy webhook-vendas --project-ref "${{ secrets.SUPABASE_PROJECT_ID }}" --token "${{ secrets.SUPABASE_ACCESS_TOKEN }}" --no-verify-jwt
