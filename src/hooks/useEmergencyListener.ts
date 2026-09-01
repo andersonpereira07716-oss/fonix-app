@@ -10,7 +10,6 @@ export function useEmergencyListener() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Escuta em tempo real mudanças no perfil do usuário no Supabase
       channel = supabase
         .channel(`public:profiles:id=eq.${user.id}`)
         .on(
@@ -24,7 +23,7 @@ export function useEmergencyListener() {
           async (payload) => {
             if (payload.new.subscription_status === 'emergency_alert') {
               console.log('🚨 Sinal de emergência recebido via Web!');
-              await processEmergencyTrigger(user.id, user.email);
+              await processEmergencyTrigger(user.email);
             }
           }
         )
@@ -38,9 +37,8 @@ export function useEmergencyListener() {
     };
   }, []);
 
-  async function processEmergencyTrigger(userId: string, userEmail?: string) {
+  async function processEmergencyTrigger(userEmail?: string) {
     try {
-      // Captura o GPS do celular
       const position = await Geolocation.getCurrentPosition({
         enableHighAccuracy: true,
         timeout: 10000
@@ -52,7 +50,6 @@ export function useEmergencyListener() {
 
       console.log('Localização capturada com sucesso:', mapUrl);
 
-      // Envia a localização e reseta o status para ativo
       await supabase.functions.invoke('activate_subscription', {
         body: { customer_email: userEmail }
       });
