@@ -5,12 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FÔNIX</title>
   </head>
-  <body>
+  <body style="margin:0; background:#111; color:#fff;">
     <div id="root">
-      <div style="display:flex;justify-content:center;align-items:center;height:100vh;background:#111;color:#fff;">
+      <div style="display:flex;justify-content:center;align-items:center;height:100vh;">
         <h2>Carregando FÔNIX...</h2>
       </div>
     </div>
+    <div id="error-box" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:#200; color:#ff9999; padding:20px; overflow:auto; font-family:monospace; z-index:99999;">
+      <h3>Erro JavaScript de Inicialização:</h3>
+      <pre id="error-msg"></pre>
+    </div>
+    <script>
+      window.addEventListener('error', function(e) {
+        document.getElementById('error-box').style.display = 'block';
+        document.getElementById('error-msg').innerText = e.message + '\nEm: ' + e.filename + ':' + e.lineno;
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
