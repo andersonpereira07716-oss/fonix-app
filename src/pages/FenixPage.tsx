@@ -2,8 +2,10 @@ import { useEffect, useState, useCallback } from 'react'
 import { ShieldAlert, X } from 'lucide-react'
 import { useDevice } from '@/hooks/useDevice'
 import { getActiveIncident, createIncident, resolveIncident } from '@/services/incidents'
-import { logEvent } from '@/services/events'
+import { logEvent, getEvents } from '@/services/events'
+import { listLocationHistory } from '@/services/locations'
 import { supabase } from '@/lib/supabaseClient'
+import { buildIncidentReport } from '@/utils/incidentReport'
 import type { Incident, IncidentStatus } from '@/types'
 
 export default function FenixPage() {
@@ -13,6 +15,8 @@ export default function FenixPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reportText, setReportText] = useState<string | null>(null)
+  const [generatingReport, setGeneratingReport] = useState(false)
 
   const loadIncident = useCallback(async () => {
     setLoading(true)
@@ -38,11 +42,11 @@ export default function FenixPage() {
       const created = await createIncident({ status: 'PERDIDO', deviceId: device.id })
       if (!created) throw new Error('Não foi possível criar o incidente.')
       await logEvent({
-  deviceId: device.id,
-  type: 'CRITICO',
-  description: 'Modo Fênix ativado — possível evento de segurança',
-  locationId: null,
-})
+        deviceId: device.id,
+        type: 'CRITICO',
+        description: 'Modo Fênix ativado — possível evento de segurança',
+        locationId: null,
+      })
       setIncident(created)
       setShowConfirm(false)
     } catch (err) {
@@ -79,6 +83,57 @@ export default function FenixPage() {
       setError(err instanceof Error ? err.message : 'Não foi possível encerrar o incidente.')
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function handleGenerateReport() {
+    if (!device || !incident) return
+    setGeneratingReport(true)
+    setError(null)
+    try {
+      const openedAt = new Date(incident.openedAt).getTime()
+      const closedAt = incident.closedAt ? new Date(incident.closedAt).getTime() : Date.now()
+
+      const [allEvents, allLocations] = await Promise.all([
+        getEvents(),
+        listLocationHistory(device.id, 100),
+      ])
+
+      const events = allEvents.filter((e) => {
+        const t = new Date(e.occurredAt).getTime()
+        return e.deviceId === device.id && t >= openedAt && t <= closedAt
+      })
+      const locations = allLocations.filter((l) => {
+        if (!l.capturedAt) return false
+        const t = new Date(l.capturedAt).getTime()
+        return t >= openedAt && t <= closedAt
+      })
+
+      const text = buildIncidentReport(device, incident, events, locations)
+      setReportText(text)
+
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: 'Relatório de incidente — FÔNIX', text })
+        } catch {
+          // Usuário cancelou o compartilhamento ou o navegador não suporta — sem problema,
+          // o texto continua disponível na tela para cópia manual.
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível gerar o relatório.')
+    } finally {
+      setGeneratingReport(false)
+    }
+  }
+
+  async function copyReport() {
+    if (!reportText) return
+    try {
+      await navigator.clipboard.writeText(reportText)
+    } catch {
+      // Alguns WebViews não suportam clipboard API — o texto continua visível para
+      // o usuário selecionar e copiar manualmente.
     }
   }
 
@@ -130,7 +185,11 @@ export default function FenixPage() {
             <ActionRow label="🔒 Bloquear dispositivo" limited />
             <ActionRow label="🔊 Tentar reproduzir som" limited />
             <ActionRow label="📞 Contato de recuperação" />
-            <ActionRow label="📋 Gerar relatório" />
+            <ActionRow
+              label={generatingReport ? '📋 Gerando relatório...' : '📋 Gerar relatório'}
+              onClick={handleGenerateReport}
+              disabled={generatingReport}
+            />
           </div>
 
           <div className="flex gap-3">
@@ -181,19 +240,69 @@ export default function FenixPage() {
           </div>
         </div>
       )}
+
+      {reportText && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 px-6">
+          <div className="card flex max-h-[80vh] w-full max-w-sm flex-col p-6">
+            <div className="flex items-start justify-between">
+              <p className="font-display text-base font-semibold text-white">
+                Relatório do incidente
+              </p>
+              <button onClick={() => setReportText(null)} className="text-mist">
+                <X size={18} />
+              </button>
+            </div>
+            <pre className="mt-4 flex-1 overflow-y-auto whitespace-pre-wrap rounded-lg bg-void-soft p-3 text-xs text-mist">
+              {reportText}
+            </pre>
+            <div className="mt-4 flex gap-3">
+              <button className="btn-ghost flex-1" onClick={copyReport}>
+                Copiar texto
+              </button>
+              <button className="btn-primary flex-1" onClick={() => setReportText(null)}>
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function ActionRow({ label, limited }: { label: string; limited?: boolean }) {
-  return (
-    <div className="rounded-xl border border-white/5 bg-void-soft p-4">
+function ActionRow({
+  label,
+  limited,
+  onClick,
+  disabled,
+}: {
+  label: string
+  limited?: boolean
+  onClick?: () => void
+  disabled?: boolean
+}) {
+  const content = (
+    <>
       <p className="text-sm text-white">{label}</p>
       {limited && (
         <p className="mt-1 text-[11px] text-mist">
           Depende das funcionalidades de segurança do sistema operacional.
         </p>
       )}
-    </div>
+    </>
   )
+
+  if (onClick) {
+    return (
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        className="rounded-xl border border-white/5 bg-void-soft p-4 text-left disabled:opacity-50"
+      >
+        {content}
+      </button>
+    )
+  }
+
+  return <div className="rounded-xl border border-white/5 bg-void-soft p-4">{content}</div>
 }
