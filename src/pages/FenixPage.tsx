@@ -1,92 +1,84 @@
-import { useState, useEffect } from 'react'
-import { ShieldAlert, X, Loader2 } from 'lucide-react'
+import { useEffect, useState, useCallback } from 'react'
+import { ShieldAlert, X } from 'lucide-react'
+import { useDevice } from '@/hooks/useDevice'
 import {
   getActiveIncident,
-  createIncident,
-  resolveIncident,
+  activatePhoenixMode,
+  updateIncidentStatus,
+  closeIncident,
 } from '@/services/incidents'
-import { createEvent } from '@/services/events'
-import type { Incident } from '@/types'
+import type { Incident, IncidentStatus } from '@/types'
 
 export default function FenixPage() {
-  const [activeIncident, setActiveIncident] = useState<Incident | null>(null)
+  const { device, loading: loadingDevice } = useDevice()
+  const [incident, setIncident] = useState<Incident | null>(null)
   const [loading, setLoading] = useState(true)
-  const [actionLoading, setActionLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const loadIncident = useCallback(async () => {
+    if (!device) return
+    setLoading(true)
+    try {
+      const active = await getActiveIncident(device.id)
+      setIncident(active)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível carregar o status.')
+    } finally {
+      setLoading(false)
+    }
+  }, [device])
 
   useEffect(() => {
-    async function loadIncident() {
-      try {
-        setLoading(true)
-        const incident = await getActiveIncident()
-        setActiveIncident(incident)
-      } catch (err) {
-        console.error('Erro ao buscar incidente ativo:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
     loadIncident()
-  }, [])
+  }, [loadIncident])
 
-  async function handleActivate() {
+  async function activate() {
+    if (!device) return
+    setBusy(true)
+    setError(null)
     try {
-      setActionLoading(true)
-      
-      const newIncident = await createIncident({
-        type: 'PERDIDO',
-        status: 'OPEN',
-      })
-
-      if (newIncident) {
-        await createEvent({
-          deviceId: newIncident.deviceId,
-          type: 'CRITICO',
-          description: 'Modo Fênix ativado pelo usuário',
-          locationId: null,
-        })
-      }
-
-      setActiveIncident(newIncident)
+      const created = await activatePhoenixMode(device.id)
+      setIncident(created)
       setShowConfirm(false)
     } catch (err) {
-      console.error('Erro ao ativar Modo Fênix:', err)
+      setError(err instanceof Error ? err.message : 'Não foi possível ativar o Modo Fênix.')
     } finally {
-      setActionLoading(false)
+      setBusy(false)
     }
   }
 
-  async function handleCloseIncident() {
-    if (!activeIncident) return
-
+  async function markAs(status: IncidentStatus) {
+    if (!incident) return
+    setBusy(true)
+    setError(null)
     try {
-      setActionLoading(true)
-
-      await resolveIncident(activeIncident.id)
-
-      await createEvent({
-        deviceId: activeIncident.deviceId,
-        type: 'SISTEMA',
-        description: 'Modo Fênix desativado / Incidente resolvido',
-        locationId: null,
-      })
-
-      setActiveIncident(null)
+      await updateIncidentStatus(incident.id, status)
+      setIncident({ ...incident, status })
     } catch (err) {
-      console.error('Erro ao encerrar incidente:', err)
+      setError(err instanceof Error ? err.message : 'Não foi possível atualizar o status.')
     } finally {
-      setActionLoading(false)
+      setBusy(false)
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="animate-spin text-electric" size={28} />
-      </div>
-    )
+  async function handleClose(recovered: boolean) {
+    if (!incident) return
+    setBusy(true)
+    setError(null)
+    try {
+      await closeIncident(incident.id, recovered)
+      setIncident(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível encerrar o incidente.')
+    } finally {
+      setBusy(false)
+    }
   }
+
+  const isLoading = loading || loadingDevice
+  const isActive = Boolean(incident)
 
   return (
     <div className="px-5 py-6 md:px-8 md:py-8">
@@ -95,7 +87,17 @@ export default function FenixPage() {
         Central de recuperação
       </h1>
 
-      {!activeIncident ? (
+      {error && (
+        <p className="mt-4 rounded-xl border border-alert/20 bg-alert/10 px-4 py-3 text-sm text-alert">
+          {error}
+        </p>
+      )}
+
+      {isLoading ? (
+        <div className="card mt-6 flex h-40 items-center justify-center">
+          <p className="text-sm text-mist">Carregando...</p>
+        </div>
+      ) : !isActive ? (
         <div className="card mt-6 flex flex-col items-center gap-4 p-8 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-alert/10">
             <ShieldAlert className="text-alert" size={30} />
@@ -103,7 +105,11 @@ export default function FenixPage() {
           <p className="max-w-xs text-sm text-mist">
             Ative o Modo Fênix somente se acredita que seu dispositivo foi perdido ou roubado.
           </p>
-          <button className="btn-danger w-full max-w-xs" onClick={() => setShowConfirm(true)}>
+          <button
+            className="btn-danger w-full max-w-xs"
+            onClick={() => setShowConfirm(true)}
+            disabled={busy}
+          >
             🚨 ATIVAR MODO FÊNIX
           </button>
         </div>
@@ -123,15 +129,23 @@ export default function FenixPage() {
           </div>
 
           <div className="flex gap-3">
-            <button className="btn-ghost flex-1">Marcar como roubado</button>
-            <button className="btn-ghost flex-1">Marcar como perdido</button>
+            <button
+              className="btn-ghost flex-1"
+              onClick={() => markAs('ROUBADO')}
+              disabled={busy}
+            >
+              Marcar como roubado
+            </button>
+            <button
+              className="btn-ghost flex-1"
+              onClick={() => markAs('PERDIDO')}
+              disabled={busy}
+            >
+              Marcar como perdido
+            </button>
           </div>
-          <button
-            className="btn-primary"
-            onClick={handleCloseIncident}
-            disabled={actionLoading}
-          >
-            {actionLoading ? 'Encerrando...' : 'Encerrar incidente'}
+          <button className="btn-primary" onClick={() => handleClose(true)} disabled={busy}>
+            Encerrar incidente
           </button>
         </div>
       )}
@@ -151,16 +165,12 @@ export default function FenixPage() {
               <button
                 className="btn-ghost flex-1"
                 onClick={() => setShowConfirm(false)}
-                disabled={actionLoading}
+                disabled={busy}
               >
                 CANCELAR
               </button>
-              <button
-                className="btn-danger flex-1"
-                onClick={handleActivate}
-                disabled={actionLoading}
-              >
-                {actionLoading ? 'ATIVANDO...' : 'ATIVAR'}
+              <button className="btn-danger flex-1" onClick={activate} disabled={busy}>
+                {busy ? 'Ativando...' : 'ATIVAR'}
               </button>
             </div>
           </div>
