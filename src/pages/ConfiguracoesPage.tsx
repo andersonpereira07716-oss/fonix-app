@@ -9,6 +9,25 @@ import {
 } from '@/services/recoveryContacts'
 import type { RecoveryContact } from '@/types'
 
+const CAKTO_CHECKOUT_URL = 'https://pay.cakto.com.br/fs5aue5_1078174'
+
+function formatDate(iso: string | null) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('pt-BR')
+}
+
+function planBadge(status: 'trial' | 'active' | 'inactive', subscriptionEnd: string | null) {
+  const trialExpired = status === 'trial' && subscriptionEnd && new Date(subscriptionEnd) < new Date()
+
+  if (status === 'active') {
+    return { label: 'PREMIUM ATIVO', className: 'bg-safe/10 text-safe' }
+  }
+  if (status === 'trial' && !trialExpired) {
+    return { label: 'TESTE GRÁTIS', className: 'bg-electric/10 text-electric' }
+  }
+  return { label: 'PLANO GRATUITO', className: 'bg-white/5 text-mist' }
+}
+
 export default function ConfiguracoesPage() {
   const navigate = useNavigate()
   const { profile, loading } = useProfile()
@@ -56,6 +75,21 @@ export default function ConfiguracoesPage() {
     navigate('/login')
   }
 
+  function handleSubscribe() {
+    const params = new URLSearchParams()
+    if (profile?.name) params.set('name', profile.name)
+    if (profile?.email) params.set('email', profile.email)
+    const url = `${CAKTO_CHECKOUT_URL}?${params.toString()}`
+    window.open(url, '_blank')
+  }
+
+  const badge = profile ? planBadge(profile.subscriptionStatus, profile.subscriptionEnd) : null
+  const isPremiumActive =
+    profile?.subscriptionStatus === 'active' ||
+    (profile?.subscriptionStatus === 'trial' &&
+      profile.subscriptionEnd &&
+      new Date(profile.subscriptionEnd) >= new Date())
+
   return (
     <div className="px-5 py-6 md:px-8 md:py-8 space-y-6">
       <div>
@@ -65,16 +99,34 @@ export default function ConfiguracoesPage() {
         </h1>
       </div>
 
-      <div className="card p-5">
+      {/* Card de assinatura */}
+      <div className="card p-5 space-y-3">
         <p className="text-sm text-white">
           {loading ? 'Carregando...' : profile?.name ?? '-'}
         </p>
         <p className="text-xs text-mist">
           {loading ? '' : profile?.email ?? ''}
         </p>
-        <p className="mt-2 inline-block rounded-full bg-electric/10 px-2.5 py-1 font-mono text-[11px] text-electric">
-          Plano {profile?.plan ?? 'FREE'}
-        </p>
+
+        {!loading && badge && (
+          <span className={`inline-block rounded-full px-2.5 py-1 font-mono text-[11px] ${badge.className}`}>
+            {badge.label}
+          </span>
+        )}
+
+        {!loading && profile?.subscriptionStatus === 'trial' && profile.subscriptionEnd && (
+          <p className="text-xs text-mist">
+            {isPremiumActive
+              ? `Seu teste grátis termina em ${formatDate(profile.subscriptionEnd)}.`
+              : `Seu teste grátis terminou em ${formatDate(profile.subscriptionEnd)}.`}
+          </p>
+        )}
+
+        {!loading && !isPremiumActive && (
+          <button onClick={handleSubscribe} className="btn-primary mt-2 w-full">
+            Assinar Premium
+          </button>
+        )}
       </div>
 
       {/* Seção de Contatos de Emergência */}
