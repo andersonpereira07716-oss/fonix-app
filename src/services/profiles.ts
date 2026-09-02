@@ -8,6 +8,7 @@ function fromRow(row: any): Profile {
     email: row.email,
     subscriptionStatus: row.subscription_status ?? 'inactive',
     subscriptionEnd: row.subscription_end,
+    plan: row.plan ?? 'FREE',          // ← adicionar esta linha
     createdAt: row.created_at,
   }
 }
