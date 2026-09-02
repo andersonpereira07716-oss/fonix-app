@@ -12,7 +12,8 @@ export interface Profile {
   id: string
   name: string
   email: string
-  plan: SubscriptionPlan
+  subscriptionStatus: 'trial' | 'active' | 'inactive'
+  subscriptionEnd: string | null
   createdAt: string
 }
 
