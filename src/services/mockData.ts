@@ -10,7 +10,8 @@ export const demoProfile: Profile = {
   id: 'demo-user',
   name: 'Ana',
   email: 'ana@exemplo.com',
-  plan: 'FREE',
+  subscriptionStatus: 'trial',
+  subscriptionEnd: null,
   createdAt: new Date().toISOString(),
 }
 
