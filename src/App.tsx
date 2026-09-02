@@ -10,7 +10,9 @@ import MapaPage from '@/pages/MapaPage'
 import EventosPage from '@/pages/EventosPage'
 import FenixPage from '@/pages/FenixPage'
 import ConfiguracoesPage from '@/pages/ConfiguracoesPage'
-
+import PlanosPage from '@/pages/PlanosPage'
+// ...
+<Route path="/planos" element={<PlanosPage />} />
 export default function App() {
   return (
     <Routes>
