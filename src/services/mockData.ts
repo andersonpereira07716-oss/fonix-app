@@ -12,6 +12,7 @@ export const demoProfile: Profile = {
   email: 'ana@exemplo.com',
   subscriptionStatus: 'trial',
   subscriptionEnd: null,
+ plan:'FREE',                          // ← adicionar esta linha
   createdAt: new Date().toISOString(),
 }
 
