@@ -6,7 +6,8 @@ function fromRow(row: any): Profile {
     id: row.id,
     name: row.name,
     email: row.email,
-    plan: row.plan,
+    subscriptionStatus: row.subscription_status ?? 'inactive',
+    subscriptionEnd: row.subscription_end,
     createdAt: row.created_at,
   }
 }
