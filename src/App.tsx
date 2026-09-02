@@ -1,82 +1,37 @@
-import { useEffect, useState } from 'react';
-import { supabase } from './lib/supabaseClient';
-import { Paywall } from './components/Paywall';
-import { EmergencyPanel } from './components/EmergencyPanel';
-import { NotificationBell } from './components/NotificationBell';
-import { useEmergencyListener } from './hooks/useEmergencyListener';
+import { Routes, Route, Navigate } from 'react-router-dom'
+import Splash from '@/pages/Splash'
+import Onboarding from '@/pages/Onboarding'
+import Login from '@/pages/Login'
+import Cadastro from '@/pages/Cadastro'
+import AppLayout from '@/components/layout/AppLayout'
+import RequireAuth from '@/components/layout/RequireAuth'
+import Dashboard from '@/pages/Dashboard'
+import MapaPage from '@/pages/MapaPage'
+import EventosPage from '@/pages/EventosPage'
+import FenixPage from '@/pages/FenixPage'
+import ConfiguracoesPage from '@/pages/ConfiguracoesPage'
 
-export function App() {
-  const [session, setSession] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [isSubscribed, setIsSubscribed] = useState(false);
-
-  // Ativa o escutador de emergência no app nativo
-  useEmergencyListener();
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) checkSubscription(session.user.id);
-      else setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) checkSubscription(session.user.id);
-      else setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  async function checkSubscription(userId: string) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('subscription_status')
-      .eq('id', userId)
-      .single();
-
-    if (data && data.subscription_status === 'active') {
-      setIsSubscribed(true);
-    } else {
-      setIsSubscribed(false);
-    }
-    setLoading(false);
-  }
-
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#0a0a0a', color: '#fff' }}>
-        Carregando FÔNIX...
-      </div>
-    );
-  }
-
-  if (!session) {
-    return (
-      <div style={{ padding: '20px', textAlign: 'center', color: '#fff', backgroundColor: '#0a0a0a', minHeight: '100vh' }}>
-        <h2>FÔNIX - Autenticação</h2>
-        <p>Acesse sua conta pelo formulário de Login do app.</p>
-      </div>
-    );
-  }
-
-  if (!isSubscribed) {
-    return <Paywall userEmail={session.user.email} />;
-  }
-
+export default function App() {
   return (
-    <div style={{ backgroundColor: '#0a0a0a', color: '#fff', minHeight: '100vh', padding: '20px', fontFamily: 'sans-serif' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h1>FÔNIX - Segurança</h1>
-        <NotificationBell />
-      </header>
-      
-      <main>
-        <EmergencyPanel />
-      </main>
-    </div>
-  );
-}
+    <Routes>
+      <Route path="/" element={<Splash />} />
+      <Route path="/onboarding" element={<Onboarding />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/cadastro" element={<Cadastro />} />
 
-export default App;
+      {/* Área autenticada — protegida por Supabase Auth (RequireAuth) */}
+      <Route element={<RequireAuth />}>
+        <Route path="/app" element={<AppLayout />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="mapa" element={<MapaPage />} />
+          <Route path="eventos" element={<EventosPage />} />
+          <Route path="fenix" element={<FenixPage />} />
+          <Route path="configuracoes" element={<ConfiguracoesPage />} />
+        </Route>
+      </Route>
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
+}
