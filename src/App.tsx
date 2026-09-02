@@ -11,15 +11,14 @@ import EventosPage from '@/pages/EventosPage'
 import FenixPage from '@/pages/FenixPage'
 import ConfiguracoesPage from '@/pages/ConfiguracoesPage'
 import PlanosPage from '@/pages/PlanosPage'
-// ...
 import Landing from '@/pages/Landing'
-// ...
-<Route path="/" element={<Landing />} />
-<Route path="/planos" element={<PlanosPage />} />
+
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Splash />} />
+      <Route path="/" element={<Landing />} />
+      <Route path="/planos" element={<PlanosPage />} />
+      <Route path="/splash" element={<Splash />} />
       <Route path="/onboarding" element={<Onboarding />} />
       <Route path="/login" element={<Login />} />
       <Route path="/cadastro" element={<Cadastro />} />
