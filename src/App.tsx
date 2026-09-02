@@ -12,6 +12,9 @@ import FenixPage from '@/pages/FenixPage'
 import ConfiguracoesPage from '@/pages/ConfiguracoesPage'
 import PlanosPage from '@/pages/PlanosPage'
 // ...
+import Landing from '@/pages/Landing'
+// ...
+<Route path="/" element={<Landing />} />
 <Route path="/planos" element={<PlanosPage />} />
 export default function App() {
   return (
