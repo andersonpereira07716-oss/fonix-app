@@ -17,19 +17,12 @@ export const EmergencyPanel: React.FC = () => {
       return;
     }
 
-    // 1. Atualiza o status do perfil no Supabase para MODO_EMERGENCIA
-    const { error } = await supabase
-      .from('profiles')
-      .update({ 
-        subscription_status: 'emergency_alert',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', user.id);
+    const { error } = await supabase.rpc('trigger_emergency');
 
     if (error) {
       setStatus('Erro ao ativar modo de emergência: ' + error.message);
     } else {
-      setStatus('🚨 MODO DE EMERGÊNCIA ATIVADO! O dispositivo responderá enviando a última localização para seus e-mails de emergência.');
+      setStatus('🚨 MODO DE EMERGÊNCIA ATIVADO! Capturando localização do dispositivo...');
     }
 
     setLoading(false);
@@ -49,7 +42,7 @@ export const EmergencyPanel: React.FC = () => {
     }}>
       <h2 style={{ color: '#ff4d4d', marginTop: 0 }}>Rastreio Remoto de Emergência</h2>
       <p style={{ color: '#ccc', fontSize: '0.95rem' }}>
-        Perdeu ou teve o celular roubado? Ative o alerta remoto para forçar a coleta de localização e envio aos contatos cadastrados.
+        Perdeu ou teve o celular roubado? Ative o alerta remoto para forçar a coleta de localização e abrir um incidente automaticamente.
       </p>
 
       <button
@@ -72,10 +65,10 @@ export const EmergencyPanel: React.FC = () => {
       </button>
 
       {status && (
-        <p style={{ 
-          marginTop: '15px', 
-          fontSize: '0.9rem', 
-          color: status.startsWith('Erro') ? '#ff8080' : '#80ff80' 
+        <p style={{
+          marginTop: '15px',
+          fontSize: '0.9rem',
+          color: status.startsWith('Erro') ? '#ff8080' : '#80ff80',
         }}>
           {status}
         </p>

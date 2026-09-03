@@ -34,9 +34,9 @@ export function useEmergencyListener() {
             filter: `id=eq.${user.id}`,
           },
           async (payload) => {
-            if (payload.new.subscription_status === 'emergency_alert') {
+            if (payload.new.emergency_triggered === true) {
               console.log('🚨 Sinal de emergência recebido via Web!');
-              await processEmergencyTrigger(user.email);
+              await processEmergencyTrigger(user.id);
             }
           }
         )
@@ -49,27 +49,49 @@ export function useEmergencyListener() {
       if (channel) supabase.removeChannel(channel);
     };
   }, []);
+}
 
-  async function processEmergencyTrigger(userEmail?: string) {
-    try {
-      const position = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 15000
-      });
+async function processEmergencyTrigger(userId: string) {
+  try {
+    const position = await Geolocation.getCurrentPosition({
+      enableHighAccuracy: true,
+      timeout: 15000,
+    });
 
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-      const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
 
-      console.log('Localização em segundo plano capturada:', mapUrl);
+    const { data: device, error: deviceError } = await supabase
+      .from('devices')
+      .select('id')
+      .eq('owner_id', userId)
+      .limit(1)
+      .maybeSingle();
 
-      await supabase.functions.invoke('activate_subscription', {
-        body: { customer_email: userEmail }
-      });
-
-      alert(`[FÔNIX SEGURANÇA] Alerta remoto processado! Localização enviada: ${mapUrl}`);
-    } catch (err) {
-      console.error('Erro ao capturar GPS no modo emergência:', err);
+    if (deviceError || !device) {
+      console.error('Nenhum dispositivo cadastrado para registrar a localização de emergência.');
+      await supabase.rpc('clear_emergency_trigger');
+      return;
     }
+
+    await supabase.from('locations').insert({
+      device_id: device.id,
+      latitude: lat,
+      longitude: lng,
+      accuracy_meters: position.coords.accuracy,
+      captured_at: new Date().toISOString(),
+    });
+
+    await supabase.from('incidents').insert({
+      device_id: device.id,
+      status: 'PERDIDO',
+      opened_at: new Date().toISOString(),
+    });
+
+    console.log(`[FÔNIX SEGURANÇA] Localização de emergência registrada: ${lat}, ${lng}`);
+  } catch (err) {
+    console.error('Erro ao capturar GPS no modo emergência:', err);
+  } finally {
+    await supabase.rpc('clear_emergency_trigger');
   }
 }
