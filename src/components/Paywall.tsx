@@ -13,7 +13,7 @@ export const Paywall: React.FC<PaywallProps> = ({ userEmail }) => {
 
   const handleBuy = () => {
     // Substitua pelo seu link direto do checkout (Cakto, Mercado Pago, etc)
-    window.open('https://seu-link-de-checkout.com', '_blank');
+    window.open('https://pay.cakto.com.br/fs5aue5_1078174', '_blank');
   };
 
   return (
