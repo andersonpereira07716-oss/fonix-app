@@ -38,13 +38,33 @@ jobs:
       - name: Dar permissao de execucao ao Gradle
         run: chmod +x android/gradlew
 
-      - name: Compilar APK (Debug & Release)
+      - name: Decodificar Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/fonix-release.keystore
+
+      - name: Compilar APK Debug
         run: |
           cd android
           ./gradlew assembleDebug
 
-      - name: Enviar APK como Artefato
+      - name: Compilar AAB Assinado (Release)
+        run: |
+          cd android
+          ./gradlew bundleRelease
+        env:
+          KEYSTORE_PATH: fonix-release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Enviar APK Debug como Artefato
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Enviar AAB Assinado como Artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
