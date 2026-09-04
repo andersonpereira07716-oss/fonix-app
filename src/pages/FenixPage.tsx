@@ -3,7 +3,7 @@ import { ShieldAlert, X } from 'lucide-react'
 import { useDevice } from '@/hooks/useDevice'
 import { getActiveIncident, createIncident, resolveIncident } from '@/services/incidents'
 import { logEvent, getEvents } from '@/services/events'
-import { listLocationHistory } from '@/services/locations'
+import { listLocationHistory, captureBrowserLocation } from '@/services/locations'
 import { supabase } from '@/lib/supabaseClient'
 import { buildIncidentReport } from '@/utils/incidentReport'
 import type { Incident, IncidentStatus } from '@/types'
@@ -47,6 +47,7 @@ export default function FenixPage() {
         description: 'Modo Fênix ativado — possível evento de segurança',
         locationId: null,
       })
+      try { await captureBrowserLocation(device.id) } catch (locErr) { console.warn('Falha ao capturar localizacao no Modo Fenix:', locErr) }
       setIncident(created)
       setShowConfirm(false)
     } catch (err) {
