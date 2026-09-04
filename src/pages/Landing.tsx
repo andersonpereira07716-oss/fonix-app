@@ -26,7 +26,7 @@ export default function Landing() {
         >
           Ver planos
         </Link>
-        <p className="text-sm text-gray-400 mt-3">5 dias grátis para testar</p>
+        <p className="text-sm text-gray-400 mt-3">3 dias grátis para testar</p>
       </section>
 
       {/* Benefícios */}

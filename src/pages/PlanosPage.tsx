@@ -18,7 +18,7 @@ export default function PlanosPage() {
         Proteja seu smartphone com o FÔNIX
       </h1>
       <p className="text-gray-600 text-center mb-10">
-        5 dias grátis para testar. Cancele quando quiser.
+        3 dias grátis para testar. Cancele quando quiser.
       </p>
 
       <div className="bg-white rounded-2xl shadow-lg border border-gray-200 max-w-sm w-full p-8">
@@ -28,7 +28,7 @@ export default function PlanosPage() {
           <span className="text-gray-500">/mês</span>
         </div>
         <p className="text-center text-sm text-green-600 font-medium mb-6">
-          5 dias de teste grátis
+          3 dias de teste grátis
         </p>
 
         <ul className="space-y-3 mb-8">
@@ -50,7 +50,7 @@ export default function PlanosPage() {
         </a>
 
         <p className="text-xs text-gray-400 text-center mt-4">
-          Após os 5 dias, cobrança automática de R$10/mês. Cancele quando quiser.
+          Após os 3 dias, cobrança automática de R$10/mês. Cancele quando quiser.
         </p>
       </div>
 
