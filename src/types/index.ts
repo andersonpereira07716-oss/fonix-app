@@ -29,6 +29,7 @@ export interface Device {
   batteryLevel: number | null
   connectionStatus: 'ONLINE' | 'OFFLINE' | 'DESCONHECIDO'
   lastSyncAt: string | null
+  imei: string | null
 }
 
 export interface DeviceEvent {

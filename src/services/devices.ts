@@ -13,6 +13,7 @@ function fromRow(row: any): Device {
     batteryLevel: row.battery_level,
     connectionStatus: row.connection_status,
     lastSyncAt: row.last_sync_at,
+    imei: row.imei,
   }
 }
 
@@ -45,6 +46,14 @@ export async function setProtectionEnabled(deviceId: string, enabled: boolean) {
   const { error } = await supabase
     .from('devices')
     .update({ protection_enabled: enabled })
+    .eq('id', deviceId)
+  if (error) throw error
+}
+
+export async function setDeviceImei(deviceId: string, imei: string) {
+  const { error } = await supabase
+    .from('devices')
+    .update({ imei })
     .eq('id', deviceId)
   if (error) throw error
 }

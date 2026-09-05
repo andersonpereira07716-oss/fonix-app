@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { signOut } from '@/services/auth'
 import { useProfile } from '@/hooks/useProfile'
+import { useDevice } from '@/hooks/useDevice'
+import { setDeviceImei } from '@/services/devices'
 import {
   getRecoveryContacts,
   createRecoveryContact,
@@ -28,15 +30,26 @@ function planBadge(status: 'trial' | 'active' | 'inactive', subscriptionEnd: str
   return { label: 'PLANO GRATUITO', className: 'bg-white/5 text-mist' }
 }
 
+function isValidImei(value: string) {
+  const digits = value.replace(/\D/g, '')
+  return digits.length === 15
+}
+
 export default function ConfiguracoesPage() {
   const navigate = useNavigate()
   const { profile, loading } = useProfile()
+  const { device, loading: loadingDevice } = useDevice()
 
   const [contacts, setContacts] = useState<RecoveryContact[]>([])
   const [loadingContacts, setLoadingContacts] = useState(true)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [saving, setSaving] = useState(false)
+
+  const [imei, setImei] = useState('')
+  const [savingImei, setSavingImei] = useState(false)
+  const [imeiSaved, setImeiSaved] = useState(false)
+  const [imeiError, setImeiError] = useState<string | null>(null)
 
   const loadContacts = async () => {
     setLoadingContacts(true)
@@ -48,6 +61,12 @@ export default function ConfiguracoesPage() {
   useEffect(() => {
     loadContacts()
   }, [])
+
+  useEffect(() => {
+    if (device?.imei) {
+      setImei(device.imei)
+    }
+  }, [device?.imei])
 
   const handleAddContact = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -67,6 +86,28 @@ export default function ConfiguracoesPage() {
     const success = await deleteRecoveryContact(id)
     if (success) {
       setContacts((prev) => prev.filter((c) => c.id !== id))
+    }
+  }
+
+  const handleSaveImei = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!device) return
+    setImeiError(null)
+    setImeiSaved(false)
+
+    if (!isValidImei(imei)) {
+      setImeiError('O IMEI deve ter 15 dígitos. Digite *#06# no discador para ver o seu.')
+      return
+    }
+
+    setSavingImei(true)
+    try {
+      await setDeviceImei(device.id, imei.replace(/\D/g, ''))
+      setImeiSaved(true)
+    } catch (err) {
+      setImeiError(err instanceof Error ? err.message : 'Não foi possível salvar o IMEI.')
+    } finally {
+      setSavingImei(false)
     }
   }
 
@@ -126,6 +167,44 @@ export default function ConfiguracoesPage() {
           <button onClick={handleSubscribe} className="btn-primary mt-2 w-full">
             Assinar Premium
           </button>
+        )}
+      </div>
+
+      {/* Card de IMEI */}
+      <div className="card p-5 space-y-3">
+        <h2 className="text-lg font-semibold text-white">IMEI do dispositivo</h2>
+        <p className="text-xs text-mist">
+          Guarde o IMEI aqui para usar em um Boletim de Ocorrência ou pedido de bloqueio na
+          operadora, caso precise. Para descobrir o seu, digite <strong>*#06#</strong> no
+          discador do telefone.
+        </p>
+
+        {loadingDevice ? (
+          <p className="text-xs text-mist">Carregando dispositivo...</p>
+        ) : (
+          <form onSubmit={handleSaveImei} className="space-y-3">
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="000000000000000"
+              value={imei}
+              onChange={(e) => {
+                setImei(e.target.value)
+                setImeiSaved(false)
+              }}
+              maxLength={17}
+              className="w-full rounded-md bg-white/5 px-3 py-2 text-sm text-white border border-white/10 focus:outline-none focus:border-electric"
+            />
+            {imeiError && <p className="text-xs text-red-400">{imeiError}</p>}
+            {imeiSaved && <p className="text-xs text-safe">IMEI salvo com sucesso.</p>}
+            <button
+              type="submit"
+              disabled={savingImei || !device}
+              className="w-full rounded-md bg-electric px-4 py-2 text-sm font-medium text-black hover:bg-electric/90 disabled:opacity-50"
+            >
+              {savingImei ? 'Salvando...' : 'Salvar IMEI'}
+            </button>
+          </form>
         )}
       </div>
 
