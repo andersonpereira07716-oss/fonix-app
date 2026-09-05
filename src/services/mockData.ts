@@ -27,6 +27,7 @@ export const demoDevice: Device = {
   batteryLevel: 62,
   connectionStatus: 'ONLINE',
   lastSyncAt: new Date().toISOString(),
+  imei: null,
 }
 
 export const demoEvents: DeviceEvent[] = [
